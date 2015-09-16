@@ -38,6 +38,12 @@ zvm_ops = [
     cfg.StrOpt('xcat_zhcp_nodename',
                default='zhcp',
                help='xCat zHCP nodename in xCAT '),
+    cfg.StrOpt('zvm_host',
+               default=None,
+               help='z/VM host that managed by xCAT MN.'),
+    cfg.StrOpt('zvm_xcat_master',
+               default='xcat',
+               help='The xCAT MM node name'),
 ]
 
 

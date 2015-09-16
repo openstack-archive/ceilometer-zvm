@@ -99,6 +99,7 @@ class TestZVMUtils(base.BaseTestCase):
         self.CONF.set_override('zvm_xcat_server', '1.1.1.1', 'zvm')
         self.CONF.set_override('zvm_xcat_username', 'user', 'zvm')
         self.CONF.set_override('zvm_xcat_password', 'pwd', 'zvm')
+        self.CONF.set_override('zvm_host', 'zvmhost1', 'zvm')
         super(TestZVMUtils, self).setUp()
 
     @mock.patch('ceilometer_zvm.compute.virt.zvm.utils.XCATConnection.request')
@@ -124,6 +125,41 @@ class TestZVMUtils(base.BaseTestCase):
     def test_get_node_hostname(self, xcat_req):
         xcat_req.return_value = {'data': [['hostname']]}
         self.assertEqual('hostname', zvmutils.get_node_hostname('nodename'))
+
+    @mock.patch.object(zvmutils, 'xcat_request')
+    def test_list_instances(self, xcat_req):
+        resp_list = [
+            'toss',
+            '"xcat","zhcp.com","xcat"',
+            '"zhcp","zhcp.com","zhcp"',
+            '"zvmhost1","zhcp.com",""',
+            '"node1","zhcp.com","node1"',
+            '"node2","zhcp.com","node2"',
+            '"node3","zhcp2.com","node3"',
+        ]
+        xcat_req.return_value = {'data': [resp_list]}
+
+        exp_list = {'node1': 'NODE1', 'node2': 'NODE2'}
+        hcp_info = {'nodename': 'zhcp',
+                    'hostname': 'zhcp.com',
+                    'userid': 'zhcp'}
+        self.assertEqual(exp_list, zvmutils.list_instances(hcp_info))
+
+    @mock.patch.object(zvmutils, 'xcat_request')
+    def test_list_instances_invalid_data(self, xcat_req):
+        resp_list = [
+            'toss',
+            '"xcat","zhcp.com","xcat"',
+            '"zhcp","zhcp.com","zhcp"',
+            '"zvmhost1","zhcp.com",""',
+            '"node1","zhcp.com"',
+        ]
+        hcp_info = {'nodename': 'zhcp',
+                    'hostname': 'zhcp.com',
+                    'userid': 'zhcp'}
+        xcat_req.return_value = {'data': [resp_list]}
+        self.assertRaises(zvmutils.ZVMException, zvmutils.list_instances,
+                          hcp_info)
 
 
 class TestCacheData(base.BaseTestCase):

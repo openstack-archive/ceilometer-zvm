@@ -314,3 +314,29 @@ def get_node_hostname(node_name):
     url = XCATUrl().gettab("/hosts", addp)
     with expect_invalid_xcat_resp_data():
         return xcat_request("GET", url)['data'][0][0]
+
+
+def list_instances(hcp_info):
+    zvm_host = CONF.zvm.zvm_host
+
+    url = XCATUrl().tabdump("/zvm")
+    res_dict = xcat_request("GET", url)
+
+    instances = {}
+
+    with expect_invalid_xcat_resp_data():
+        data_entries = res_dict['data'][0][1:]
+        for data in data_entries:
+            l = data.split(",")
+            node = l[0].strip("\"")
+            hcp = l[1].strip("\"")
+            userid = l[2].strip("\"")
+
+            # zvm host and zhcp are not included in the list
+            if (hcp.upper() == hcp_info['hostname'].upper() and
+                    node.upper() not in (zvm_host.upper(),
+                    hcp_info['nodename'].upper(),
+                    CONF.zvm.zvm_xcat_master.upper())):
+                instances[node] = userid.upper()
+
+    return instances
