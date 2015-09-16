@@ -116,3 +116,33 @@ class TestZVMUtils(base.BaseTestCase):
         xcat_req.assert_any_call('PUT',
             '/xcatws/nodes/node/dsh?userName=user&password=pwd&format=json',
             ['command=cmds'])
+
+
+class TestCacheData(base.BaseTestCase):
+
+    def setUp(self):
+        super(TestCacheData, self).setUp()
+        self.cache_data = zvmutils.CacheData()
+
+    def tearDown(self):
+        self.cache_data.clear()
+        super(TestCacheData, self).tearDown()
+
+    def test_set(self):
+        self.cache_data.set({'nodename': 'node'})
+        self.assertEqual({'nodename': 'node'}, self.cache_data.cache['node'])
+
+    def test_get(self):
+        self.cache_data.set({'nodename': 'node'})
+        self.assertEqual({'nodename': 'node'}, self.cache_data.get('node'))
+
+    def test_delete(self):
+        self.cache_data.set({'nodename': 'node'})
+        self.cache_data.delete('node')
+        self.assertEqual(None, self.cache_data.get('node'))
+
+    def test_clear(self):
+        self.cache_data.set({'nodename': 'node1'})
+        self.cache_data.set({'nodename': 'node2'})
+        self.cache_data.clear()
+        self.assertEqual({}, self.cache_data.cache)

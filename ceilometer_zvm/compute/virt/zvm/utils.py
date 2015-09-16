@@ -33,6 +33,25 @@ class ZVMException(inspector.InspectorException):
     pass
 
 
+class CacheData(object):
+
+    def __init__(self):
+        self.cache = {}
+
+    def set(self, inst_stat):
+        self.cache[inst_stat['nodename']] = inst_stat
+
+    def get(self, inst_name):
+        return self.cache.get(inst_name, None)
+
+    def delete(self, inst_name):
+        if inst_name in self.cache:
+            del self.cache[inst_name]
+
+    def clear(self):
+        self.cache = {}
+
+
 class XCATUrl(object):
     """To return xCAT url for invoking xCAT REST API."""
     def __init__(self):
