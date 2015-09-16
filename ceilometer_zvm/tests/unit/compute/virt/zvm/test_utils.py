@@ -19,14 +19,15 @@ from oslo_config import fixture as fixture_config
 from oslo_serialization import jsonutils
 from oslotest import base
 
-from ceilometer_zvm.compute.virt.zvm import inspector
+from ceilometer_zvm.compute.virt.zvm import inspector as zvm_inspector
 from ceilometer_zvm.compute.virt.zvm import utils as zvmutils
 
 
 class TestXCATUrl(base.BaseTestCase):
 
     def setUp(self):
-        self.CONF = self.useFixture(fixture_config.Config(inspector.CONF)).conf
+        self.CONF = self.useFixture(
+                            fixture_config.Config(zvm_inspector.CONF)).conf
         self.CONF.set_override('zvm_xcat_username', 'user', 'zvm')
         self.CONF.set_override('zvm_xcat_password', 'pwd', 'zvm')
         super(TestXCATUrl, self).setUp()
@@ -56,7 +57,8 @@ class TestXCATUrl(base.BaseTestCase):
 class TestXCATConnection(base.BaseTestCase):
 
     def setUp(self):
-        self.CONF = self.useFixture(fixture_config.Config(inspector.CONF)).conf
+        self.CONF = self.useFixture(
+                            fixture_config.Config(zvm_inspector.CONF)).conf
         self.CONF.set_override('zvm_xcat_server', '1.1.1.1', 'zvm')
         self.CONF.set_override('zvm_xcat_username', 'user', 'zvm')
         self.CONF.set_override('zvm_xcat_password', 'pwd', 'zvm')
@@ -92,7 +94,8 @@ class TestXCATConnection(base.BaseTestCase):
 class TestZVMUtils(base.BaseTestCase):
 
     def setUp(self):
-        self.CONF = self.useFixture(fixture_config.Config(inspector.CONF)).conf
+        self.CONF = self.useFixture(
+                            fixture_config.Config(zvm_inspector.CONF)).conf
         self.CONF.set_override('zvm_xcat_server', '1.1.1.1', 'zvm')
         self.CONF.set_override('zvm_xcat_username', 'user', 'zvm')
         self.CONF.set_override('zvm_xcat_password', 'pwd', 'zvm')
@@ -116,6 +119,11 @@ class TestZVMUtils(base.BaseTestCase):
         xcat_req.assert_any_call('PUT',
             '/xcatws/nodes/node/dsh?userName=user&password=pwd&format=json',
             ['command=cmds'])
+
+    @mock.patch('ceilometer_zvm.compute.virt.zvm.utils.xcat_request')
+    def test_get_node_hostname(self, xcat_req):
+        xcat_req.return_value = {'data': [['hostname']]}
+        self.assertEqual('hostname', zvmutils.get_node_hostname('nodename'))
 
 
 class TestCacheData(base.BaseTestCase):

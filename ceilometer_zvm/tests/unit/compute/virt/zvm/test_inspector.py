@@ -13,16 +13,30 @@
 #    under the License.
 
 
+import mock
+
+from oslo_config import fixture as fixture_config
 from oslotest import base
 
 from ceilometer_zvm.compute.virt.zvm import inspector as zvm_inspector
+from ceilometer_zvm.compute.virt.zvm import utils as zvmutils
 
 
 class TestZVMInspector(base.BaseTestCase):
 
     def setUp(self):
+        self.CONF = self.useFixture(
+                            fixture_config.Config(zvm_inspector.CONF)).conf
+        self.CONF.set_override('xcat_zhcp_nodename', 'zhcp', 'zvm')
         super(TestZVMInspector, self).setUp()
-        self.inspector = zvm_inspector.ZVMInspector()
+
+        get_nhn = mock.MagicMock(return_value='zhcp.com')
+        get_uid = mock.MagicMock(return_value='zhcp')
+        with mock.patch.multiple(zvmutils, get_node_hostname=get_nhn,
+                                 get_userid=get_uid):
+            self.inspector = zvm_inspector.ZVMInspector()
 
     def test_init(self):
-        self.assertIsInstance(self.inspector, zvm_inspector.ZVMInspector)
+        self.assertEqual('zhcp', self.inspector.zhcp_info['nodename'])
+        self.assertEqual('zhcp.com', self.inspector.zhcp_info['hostname'])
+        self.assertEqual('zhcp', self.inspector.zhcp_info['userid'])

@@ -16,6 +16,9 @@
 from ceilometer.compute.virt import inspector as virt_inspector
 from oslo_config import cfg
 from oslo_log import log
+from oslo_utils import timeutils
+
+from ceilometer_zvm.compute.virt.zvm import utils as zvmutils
 
 
 zvm_ops = [
@@ -32,6 +35,9 @@ zvm_ops = [
     cfg.IntOpt('zvm_xcat_connection_timeout',
                default=600,
                help="The number of seconds wait for xCAT MN response"),
+    cfg.StrOpt('xcat_zhcp_nodename',
+               default='zhcp',
+               help='xCat zHCP nodename in xCAT '),
 ]
 
 
@@ -44,7 +50,16 @@ LOG = log.getLogger(__name__)
 class ZVMInspector(virt_inspector.Inspector):
 
     def __init__(self):
-        pass
+        self.cache = zvmutils.CacheData()
+        self.cache_expiration = timeutils.utcnow_ts()
+
+        self.instances = {}
+        self.zhcp_info = {
+            'nodename': CONF.zvm.xcat_zhcp_nodename,
+            'hostname': zvmutils.get_node_hostname(
+                            CONF.zvm.xcat_zhcp_nodename),
+            'userid': zvmutils.get_userid(CONF.zvm.xcat_zhcp_nodename)
+        }
 
     def inspect_cpus(self, instance):
         pass

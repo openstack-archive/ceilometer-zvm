@@ -307,3 +307,10 @@ def xdsh(node, commands):
     res_dict = xdsh_execute(node, commands)
 
     return res_dict
+
+
+def get_node_hostname(node_name):
+    addp = '&col=node&value=%s&attribute=hostnames' % node_name
+    url = XCATUrl().gettab("/hosts", addp)
+    with expect_invalid_xcat_resp_data():
+        return xcat_request("GET", url)['data'][0][0]
