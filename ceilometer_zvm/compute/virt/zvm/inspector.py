@@ -18,7 +18,26 @@ from oslo_config import cfg
 from oslo_log import log
 
 
+zvm_ops = [
+    cfg.StrOpt('zvm_xcat_server',
+               default=None,
+               help='Host name or IP address of xCAT management_node'),
+    cfg.StrOpt('zvm_xcat_username',
+               default=None,
+               help='xCAT username'),
+    cfg.StrOpt('zvm_xcat_password',
+               default=None,
+               secret=True,
+               help='Password of the xCAT user'),
+    cfg.IntOpt('zvm_xcat_connection_timeout',
+               default=600,
+               help="The number of seconds wait for xCAT MN response"),
+]
+
+
 CONF = cfg.CONF
+CONF.register_opts(zvm_ops, group='zvm')
+
 LOG = log.getLogger(__name__)
 
 
