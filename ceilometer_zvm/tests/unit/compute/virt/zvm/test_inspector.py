@@ -163,3 +163,73 @@ class TestZVMInspector(base.BaseTestCase):
         mem_usage = self.inspector.inspect_memory_usage(None)
         self.assertEqual(1998, mem_usage.usage)
         get_stat.assert_called_once_with('memory.usage', None)
+
+    @mock.patch.object(zvmutils, 'virutal_network_vswitch_query_iuo_stats')
+    def test_update_inst_nic_stat(self, vswq):
+        vsw_dist = {'vswitches': [
+            {'vswitch_name': 'XCATVSW1',
+                'nics': [
+                    {'nic_fr_rx_dsc': '0',
+                     'nic_fr_rx_err': '0',
+                     'nic_fr_tx_err': '4',
+                     'userid': 'INST1',
+                     'nic_rx': '103024058',
+                     'nic_fr_rx': '573952',
+                     'nic_fr_tx': '548780',
+                     'vdev': '0600',
+                     'nic_fr_tx_dsc': '0',
+                     'nic_tx': '102030890'},
+                    {'nic_fr_rx_dsc': '0',
+                     'nic_fr_rx_err': '0',
+                     'nic_fr_tx_err': '4',
+                     'userid': 'INST2',
+                     'nic_rx': '3111714',
+                     'nic_fr_rx': '17493',
+                     'nic_fr_tx': '16886',
+                     'vdev': '0600',
+                     'nic_fr_tx_dsc': '0',
+                     'nic_tx': '3172646'}]},
+            {'vswitch_name': 'XCATVSW2',
+                'nics': [
+                    {'nic_fr_rx_dsc': '0',
+                     'nic_fr_rx_err': '0',
+                     'nic_fr_tx_err': '0',
+                     'userid': 'INST1',
+                     'nic_rx': '4684435',
+                     'nic_fr_rx': '34958',
+                     'nic_fr_tx': '16211',
+                     'vdev': '1000',
+                     'nic_fr_tx_dsc': '0',
+                     'nic_tx': '3316601'},
+                    {'nic_fr_rx_dsc': '0',
+                     'nic_fr_rx_err': '0',
+                     'nic_fr_tx_err': '0',
+                     'userid': 'INST2',
+                     'nic_rx': '3577163',
+                     'nic_fr_rx': '27211',
+                     'nic_fr_tx': '12344',
+                     'vdev': '1000',
+                     'nic_fr_tx_dsc': '0',
+                     'nic_tx': '2515045'}]}],
+            'vswitch_count': 2}
+        vswq.return_value = vsw_dist
+        instances = {'inst1': 'INST1', 'inst2': 'INST2'}
+        self.inspector._update_inst_nic_stat(instances)
+
+        exp_inst1_nics_data = [
+            {'nic_vdev': '0600',
+             'vswitch_name': 'XCATVSW1',
+             'nic_rx': 103024058,
+             'nic_fr_rx': 573952,
+             'nic_fr_tx': 548780,
+             'nic_tx': 102030890},
+            {'nic_vdev': '1000',
+             'vswitch_name': 'XCATVSW2',
+             'nic_rx': 4684435,
+             'nic_fr_rx': 34958,
+             'nic_fr_tx': 16211,
+             'nic_tx': 3316601}
+        ]
+        self.assertEqual(exp_inst1_nics_data,
+                         self.inspector.cache.get('inst1')['nics'])
+        vswq.assert_called_once_with('zhcp')

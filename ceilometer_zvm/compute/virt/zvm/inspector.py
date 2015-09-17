@@ -95,6 +95,31 @@ class ZVMInspector(virt_inspector.Inspector):
 
             self.cache.set(inst_stat)
 
+    def _update_inst_nic_stat(self, instances):
+        vsw_dict = zvmutils.virutal_network_vswitch_query_iuo_stats(
+                                                    self.zhcp_info['nodename'])
+        with zvmutils.expect_invalid_xcat_resp_data():
+            for vsw in vsw_dict['vswitches']:
+                for nic in vsw['nics']:
+                    for inst_name, userid in instances.items():
+                        if nic['userid'].upper() == userid.upper():
+                            nic_entry = {'vswitch_name': vsw['vswitch_name'],
+                                         'nic_vdev': nic['vdev'],
+                                         'nic_fr_rx': int(nic['nic_fr_rx']),
+                                         'nic_fr_tx': int(nic['nic_fr_tx']),
+                                         'nic_rx': int(nic['nic_rx']),
+                                         'nic_tx': int(nic['nic_tx'])}
+                            inst_stat = self.cache.get(inst_name)
+                            if inst_stat is None:
+                                inst_stat = {
+                                    'nodename': inst_name,
+                                    'userid': userid,
+                                    'nics': [nic_entry]
+                                }
+                            else:
+                                inst_stat['nics'].append(nic_entry)
+                            self.cache.set(inst_stat)
+
     def _update_cache(self, meter, instances={}):
         if instances == {}:
             self.cache.clear()
