@@ -1,0 +1,8 @@
+Verified+2: Jenkins
+Code-Review+2: Huang Rui <bjhuangr@cn.ibm.com>
+Workflow+1: Huang Rui <bjhuangr@cn.ibm.com>
+Submitted-by: Jenkins
+Submitted-at: Thu, 17 Sep 2015 02:34:24 +0000
+Reviewed-on: https://review.openstack.org/224378
+Project: stackforge/ceilometer-zvm
+Branch: refs/heads/master
