@@ -340,3 +340,28 @@ def list_instances(hcp_info):
                 instances[node] = userid.upper()
 
     return instances
+
+
+def image_performance_query(zhcp_node, inst_list):
+    cmd = ('smcli Image_Performance_Query -T "%(inst_list)s" -c %(num)s' %
+           {'inst_list': " ".join(inst_list), 'num': len(inst_list)})
+
+    with expect_invalid_xcat_resp_data():
+        resp = xdsh(zhcp_node, cmd)
+        raw_data = resp["data"][0][0]
+
+    ipq_kws = {
+        'userid': "Guest name:",
+        'guest_cpus': "Guest CPUs:",
+        'used_cpu_time': "Used CPU time:",
+        'used_memory': "Used memory:",
+    }
+
+    pi_dict = {}
+    with expect_invalid_xcat_resp_data():
+        rpi_list = raw_data.split("".join((zhcp_node, ": \n")))
+        for rpi in rpi_list:
+            pi = translate_xcat_resp(rpi, ipq_kws)
+            pi_dict[pi['userid']] = pi
+
+    return pi_dict

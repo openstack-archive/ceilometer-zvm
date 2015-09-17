@@ -161,6 +161,41 @@ class TestZVMUtils(base.BaseTestCase):
         self.assertRaises(zvmutils.ZVMException, zvmutils.list_instances,
                           hcp_info)
 
+    @mock.patch.object(zvmutils, 'xdsh')
+    def test_image_performance_query(self, dsh):
+        res_data = ["zhcp: Number of virtual server IDs: 2 \n"
+                    "zhcp: Guest name: INST1\n"
+                    "zhcp: Used CPU time: \"1710205201 uS\"\n"
+                    "zhcp: Elapsed time: \"6659572798 uS\"\n"
+                    "zhcp: Used memory: \"4189268 KB\"\n"
+                    "zhcp: Guest CPUs: \"2\"\n"
+                    "zhcp: \n"
+                    "zhcp: Guest name: INST2\n"
+                    "zhcp: Used CPU time: \"1710205201 uS\"\n"
+                    "zhcp: Elapsed time: \"6659572798 uS\"\n"
+                    "zhcp: Used memory: \"4189268 KB\"\n"
+                    "zhcp: Guest CPUs: \"4\"\n"]
+        dsh.return_value = {'data': [res_data]}
+        inst_list = {'inst1': 'INST1', 'inst2': 'INST2'}
+
+        exp_data = {'INST1': {'userid': 'INST1',
+                              'guest_cpus': '2',
+                              'used_cpu_time': '1710205201 uS',
+                              'used_memory': '4189268 KB'},
+                    'INST2': {'userid': 'INST2',
+                              'guest_cpus': '4',
+                              'used_cpu_time': '1710205201 uS',
+                              'used_memory': '4189268 KB'}}
+        self.assertEqual(exp_data,
+                         zvmutils.image_performance_query('zhcp', inst_list))
+
+    @mock.patch.object(zvmutils, 'xdsh')
+    def test_image_performance_query_invalid_xdsh_resp(self, dsh):
+        dsh.return_value = {'data': 'invalid data'}
+        inst_list = {'inst1': 'INST1', 'inst2': 'INST2'}
+        self.assertRaises(zvmutils.ZVMException,
+                          zvmutils.image_performance_query, 'zhcp', inst_list)
+
 
 class TestCacheData(base.BaseTestCase):
 
