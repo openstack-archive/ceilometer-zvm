@@ -17,6 +17,7 @@ from ceilometer.compute.virt import inspector as virt_inspector
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import timeutils
+from oslo_utils import units
 
 from ceilometer_zvm.compute.virt.zvm import utils as zvmutils
 
@@ -66,6 +67,30 @@ class ZVMInspector(virt_inspector.Inspector):
                             CONF.zvm.xcat_zhcp_nodename),
             'userid': zvmutils.get_userid(CONF.zvm.xcat_zhcp_nodename)
         }
+
+    def _update_inst_cpu_mem_stat(self, instances):
+        inst_pis = zvmutils.image_performance_query(
+                                self.zhcp_info['nodename'], instances.values())
+
+        for inst_name, userid in instances.items():
+            if userid not in inst_pis.keys():
+                # Not performance data returned for this virtual machine
+                continue
+
+            with zvmutils.expect_invalid_xcat_resp_data():
+                guest_cpus = int(inst_pis[userid]['guest_cpus'])
+                used_cpu_time = inst_pis[userid]['used_cpu_time']
+                used_cpu_time = int(used_cpu_time.partition(' ')[0]) * units.k
+                used_memory = inst_pis[userid]['used_memory']
+                used_memory = int(used_memory.partition(' ')[0]) / units.Ki
+
+            inst_stat = {'nodename': inst_name,
+                         'userid': userid,
+                         'guest_cpus': guest_cpus,
+                         'used_cpu_time': used_cpu_time,
+                         'used_memory': used_memory}
+
+            self.cache.set(inst_stat)
 
     def inspect_cpus(self, instance):
         pass

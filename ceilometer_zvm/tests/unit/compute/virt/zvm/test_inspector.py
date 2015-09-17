@@ -40,3 +40,31 @@ class TestZVMInspector(base.BaseTestCase):
         self.assertEqual('zhcp', self.inspector.zhcp_info['nodename'])
         self.assertEqual('zhcp.com', self.inspector.zhcp_info['hostname'])
         self.assertEqual('zhcp', self.inspector.zhcp_info['userid'])
+
+    @mock.patch.object(zvmutils, 'image_performance_query')
+    def test_update_inst_cpu_mem_stat(self, ipq):
+        ipq.return_value = {'INST1': {'userid': 'INST1',
+                                      'guest_cpus': '2',
+                                      'used_cpu_time': '1710205201 uS',
+                                      'used_memory': '4189268 KB'},
+                            'INST2': {'userid': 'INST2',
+                                      'guest_cpus': '4',
+                                      'used_cpu_time': '1710205201 uS',
+                                      'used_memory': '4189268 KB'}}
+        inst_list = {'inst1': 'INST1', 'inst2': 'INST2'}
+        self.inspector._update_inst_cpu_mem_stat(inst_list)
+
+        exp1 = {'guest_cpus': 2,
+                'nodename': 'inst1',
+                'used_cpu_time': 1710205201000,
+                'used_memory': 4091,
+                'userid': 'INST1'}
+        self.assertEqual(exp1, self.inspector.cache.get('inst1'))
+        self.assertEqual(4, self.inspector.cache.get('inst2')['guest_cpus'])
+
+    @mock.patch.object(zvmutils, 'image_performance_query')
+    def test_update_inst_cpu_mem_stat_invalid_data(self, ipq):
+        ipq.return_value = {'INST1': {'userid': 'INST1', 'guest_cpus': 's'}}
+        self.assertRaises(zvmutils.ZVMException,
+                          self.inspector._update_inst_cpu_mem_stat,
+                          {'inst1': 'INST1'})
