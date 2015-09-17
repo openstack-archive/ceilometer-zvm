@@ -365,3 +365,7 @@ def image_performance_query(zhcp_node, inst_list):
             pi_dict[pi['userid']] = pi
 
     return pi_dict
+
+
+def get_inst_name(instance):
+    return getattr(instance, 'OS-EXT-SRV-ATTR:instance_name', None)

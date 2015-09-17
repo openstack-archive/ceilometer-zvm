@@ -15,7 +15,9 @@
 
 import mock
 
+from ceilometer.compute.virt import inspector as virt_inspertor
 from oslo_config import fixture as fixture_config
+from oslo_utils import timeutils
 from oslotest import base
 
 from ceilometer_zvm.compute.virt.zvm import inspector as zvm_inspector
@@ -85,3 +87,62 @@ class TestZVMInspector(base.BaseTestCase):
         inst = {'inst1': 'INST1'}
         self.inspector._update_cache('memory.usage', inst)
         upd.assert_called_with(inst)
+
+    @mock.patch("ceilometer_zvm.compute.virt.zvm.inspector.ZVMInspector."
+                "_update_cache")
+    def test_check_expiration_and_update_cache(self, udc):
+        self.inspector._check_expiration_and_update_cache('cpus')
+        udc.assert_called_once_with('cpus')
+
+    @mock.patch("ceilometer_zvm.compute.virt.zvm.inspector.ZVMInspector."
+                "_update_cache")
+    def test_check_expiration_and_update_cache_no_update(self, udc):
+        self.inspector.cache_expiration = timeutils.utcnow_ts() + 100
+        self.inspector._check_expiration_and_update_cache('cpus')
+        udc.assert_not_called()
+
+    @mock.patch.object(zvmutils, 'get_inst_name')
+    @mock.patch("ceilometer_zvm.compute.virt.zvm.inspector.ZVMInspector."
+                "_check_expiration_and_update_cache")
+    def test_get_inst_stat(self, check_update, get_name):
+        get_name.return_value = 'inst1'
+        self.inspector.cache.set({'guest_cpus': 2, 'nodename': 'inst1'})
+
+        inst_stat = self.inspector._get_inst_stat('cpus', {'inst1': 'INST1'})
+        self.assertEqual(2, inst_stat['guest_cpus'])
+        check_update.assert_called_once_with('cpus')
+
+    @mock.patch("ceilometer_zvm.compute.virt.zvm.inspector.ZVMInspector."
+                "_update_cache")
+    @mock.patch.object(zvmutils, 'get_userid')
+    @mock.patch.object(zvmutils, 'get_inst_name')
+    @mock.patch("ceilometer_zvm.compute.virt.zvm.inspector.ZVMInspector."
+                "_check_expiration_and_update_cache")
+    def test_get_inst_stat_not_found(self, check_update, get_name,
+                                     get_uid, update):
+        get_name.return_value = 'inst1'
+        get_uid.return_value = 'INST1'
+
+        self.assertRaises(virt_inspertor.InstanceNotFoundException,
+                          self.inspector._get_inst_stat, 'cpus',
+                          {'inst1': 'INST1'})
+        check_update.assert_called_once_with('cpus')
+        update.assert_called_once_with('cpus', {'inst1': 'INST1'})
+
+    @mock.patch("ceilometer_zvm.compute.virt.zvm.inspector.ZVMInspector."
+                "_update_cache")
+    @mock.patch.object(zvmutils, 'get_userid')
+    @mock.patch("ceilometer_zvm.compute.virt.zvm.utils.CacheData.get")
+    @mock.patch.object(zvmutils, 'get_inst_name')
+    @mock.patch("ceilometer_zvm.compute.virt.zvm.inspector.ZVMInspector."
+                "_check_expiration_and_update_cache")
+    def test_get_inst_stat_update_cache(self, check_update, get_name,
+                                        cache_get, get_uid, update):
+        get_name.return_value = 'inst1'
+        cache_get.side_effect = [None, {'guest_cpus': 2, 'nodename': 'inst1'}]
+        get_uid.return_value = 'INST1'
+
+        inst_stat = self.inspector._get_inst_stat('cpus', {'inst1': 'INST1'})
+        self.assertEqual(2, inst_stat['guest_cpus'])
+        check_update.assert_called_once_with('cpus')
+        update.assert_called_once_with('cpus', {'inst1': 'INST1'})

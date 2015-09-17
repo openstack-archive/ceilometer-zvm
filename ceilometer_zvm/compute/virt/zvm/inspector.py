@@ -106,6 +106,28 @@ class ZVMInspector(virt_inspector.Inspector):
         if meter in ('cpus', 'memory.usage'):
             self._update_inst_cpu_mem_stat(instances)
 
+    def _check_expiration_and_update_cache(self, meter):
+        now = timeutils.utcnow_ts()
+        if now >= self.cache_expiration:
+            self._update_cache(meter)
+
+    def _get_inst_stat(self, meter, instance):
+        self._check_expiration_and_update_cache(meter)
+
+        inst_name = zvmutils.get_inst_name(instance)
+        inst_stat = self.cache.get(inst_name)
+
+        if inst_stat is None:
+            userid = (self.instances.get(inst_name) or
+                        zvmutils.get_userid(inst_name))
+            self._update_cache(meter, {inst_name: userid})
+            inst_stat = self.cache.get(inst_name)
+
+        if inst_stat is None:
+            raise virt_inspector.InstanceNotFoundException()
+        else:
+            return inst_stat
+
     def inspect_cpus(self, instance):
         pass
 
