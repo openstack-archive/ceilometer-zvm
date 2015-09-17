@@ -146,3 +146,12 @@ class TestZVMInspector(base.BaseTestCase):
         self.assertEqual(2, inst_stat['guest_cpus'])
         check_update.assert_called_once_with('cpus')
         update.assert_called_once_with('cpus', {'inst1': 'INST1'})
+
+    @mock.patch("ceilometer_zvm.compute.virt.zvm.inspector.ZVMInspector."
+                "_get_inst_stat")
+    def test_inspect_cpus(self, get_stat):
+        get_stat.return_value = {'guest_cpus': 2, 'used_cpu_time': 99999999}
+        cpu_stat = self.inspector.inspect_cpus(None)
+        self.assertEqual(2, cpu_stat.number)
+        self.assertEqual(99999999, cpu_stat.time)
+        get_stat.assert_called_once_with('cpus', None)
