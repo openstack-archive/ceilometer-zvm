@@ -45,6 +45,9 @@ zvm_ops = [
     cfg.StrOpt('zvm_xcat_master',
                default='xcat',
                help='The xCAT MM node name'),
+    cfg.IntOpt('cache_update_interval',
+               default=600,
+               help="Cached data update interval"),
 ]
 
 
@@ -91,6 +94,17 @@ class ZVMInspector(virt_inspector.Inspector):
                          'used_memory': used_memory}
 
             self.cache.set(inst_stat)
+
+    def _update_cache(self, meter, instances={}):
+        if instances == {}:
+            self.cache.clear()
+            self.cache_expiration = (timeutils.utcnow_ts() +
+                                     CONF.zvm.cache_update_interval)
+            instances = self.instances = zvmutils.list_instances(
+                                                                self.zhcp_info)
+
+        if meter in ('cpus', 'memory.usage'):
+            self._update_inst_cpu_mem_stat(instances)
 
     def inspect_cpus(self, instance):
         pass

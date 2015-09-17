@@ -68,3 +68,20 @@ class TestZVMInspector(base.BaseTestCase):
         self.assertRaises(zvmutils.ZVMException,
                           self.inspector._update_inst_cpu_mem_stat,
                           {'inst1': 'INST1'})
+
+    @mock.patch("ceilometer_zvm.compute.virt.zvm.inspector.ZVMInspector."
+                "_update_inst_cpu_mem_stat")
+    @mock.patch.object(zvmutils, 'list_instances')
+    def test_update_cache_all(self, list_inst, upd):
+        inst_list = {'inst1': 'INST1', 'inst2': 'INST2'}
+        list_inst.return_value = inst_list
+        self.inspector._update_cache("cpus", {})
+        list_inst.assert_called_with(self.inspector.zhcp_info)
+        upd.assert_called_with(inst_list)
+
+    @mock.patch("ceilometer_zvm.compute.virt.zvm.inspector.ZVMInspector."
+                "_update_inst_cpu_mem_stat")
+    def test_update_cache_one_inst(self, upd):
+        inst = {'inst1': 'INST1'}
+        self.inspector._update_cache('memory.usage', inst)
+        upd.assert_called_with(inst)
