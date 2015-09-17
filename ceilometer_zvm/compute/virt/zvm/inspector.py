@@ -130,6 +130,8 @@ class ZVMInspector(virt_inspector.Inspector):
 
         if meter in ('cpus', 'memory.usage'):
             self._update_inst_cpu_mem_stat(instances)
+        elif meter in ('vnics',):
+            self._update_inst_nic_stat(instances)
 
     def _check_expiration_and_update_cache(self, meter):
         now = timeutils.utcnow_ts()
@@ -163,4 +165,18 @@ class ZVMInspector(virt_inspector.Inspector):
         return virt_inspector.MemoryUsageStats(usage=inst_stat['used_memory'])
 
     def inspect_vnics(self, instance):
-        pass
+        inst_stat = self._get_inst_stat('vnics', instance)
+        for nic in inst_stat['nics']:
+            nic_id = '_'.join((nic['vswitch_name'], inst_stat['userid'],
+                               nic['nic_vdev']))
+            interface = virt_inspector.Interface(
+                name=nic_id,
+                mac=None,
+                fref=None,
+                parameters=None)
+            stats = virt_inspector.InterfaceStats(
+                rx_bytes=nic['nic_rx'],
+                rx_packets=nic['nic_fr_rx'],
+                tx_bytes=nic['nic_tx'],
+                tx_packets=nic['nic_fr_tx'])
+            yield (interface, stats)

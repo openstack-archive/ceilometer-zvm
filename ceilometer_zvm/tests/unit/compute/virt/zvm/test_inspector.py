@@ -147,6 +147,30 @@ class TestZVMInspector(base.BaseTestCase):
         check_update.assert_called_once_with('cpus')
         update.assert_called_once_with('cpus', {'inst1': 'INST1'})
 
+    @mock.patch.object(zvmutils, 'get_inst_name')
+    @mock.patch("ceilometer_zvm.compute.virt.zvm.inspector.ZVMInspector."
+                "_check_expiration_and_update_cache")
+    def test_get_inst_stat_nics(self, check_update, get_name):
+        get_name.return_value = 'inst1'
+        self.inspector.cache.set({'nodename': 'inst1',
+                                  'userid': 'INST1',
+                                  'nics': [
+                                      {'vswitch_name': 'vsw1',
+                                      'nic_vdev': '0600',
+                                      'nic_fr_rx': 99999,
+                                      'nic_fr_tx': 99999,
+                                      'nic_rx': 9999999,
+                                      'nic_tx': 9999999},
+                                      {'vswitch_name': 'vsw2',
+                                      'nic_vdev': '0700',
+                                      'nic_fr_rx': 88888,
+                                      'nic_fr_tx': 88888,
+                                      'nic_rx': 8888888,
+                                      'nic_tx': 8888888}]})
+        inst_stat = self.inspector._get_inst_stat('vnics', {'inst1': 'INST1'})
+        self.assertEqual(2, len(inst_stat['nics']))
+        check_update.assert_called_once_with('vnics')
+
     @mock.patch("ceilometer_zvm.compute.virt.zvm.inspector.ZVMInspector."
                 "_get_inst_stat")
     def test_inspect_cpus(self, get_stat):
@@ -233,3 +257,28 @@ class TestZVMInspector(base.BaseTestCase):
         self.assertEqual(exp_inst1_nics_data,
                          self.inspector.cache.get('inst1')['nics'])
         vswq.assert_called_once_with('zhcp')
+
+    @mock.patch("ceilometer_zvm.compute.virt.zvm.inspector.ZVMInspector."
+                "_get_inst_stat")
+    def test_inspect_nics(self, get_stat):
+        get_stat.return_value = {'nodename': 'inst1',
+                                  'userid': 'INST1',
+                                  'nics': [
+                                      {'vswitch_name': 'vsw1',
+                                      'nic_vdev': '0600',
+                                      'nic_fr_rx': 99999,
+                                      'nic_fr_tx': 99999,
+                                      'nic_rx': 9999999,
+                                      'nic_tx': 9999999},
+                                      {'vswitch_name': 'vsw2',
+                                      'nic_vdev': '0700',
+                                      'nic_fr_rx': 88888,
+                                      'nic_fr_tx': 88888,
+                                      'nic_rx': 8888888,
+                                      'nic_tx': 8888888}]}
+        nic, stat = list(self.inspector.inspect_vnics({'inst1': 'INST1'}))[0]
+        if nic.name == 'vsw1_INST1_0600':
+            self.assertEqual(99999, stat.rx_packets)
+        else:
+            self.assertEqual(8888888, stat.rx_bytes)
+        get_stat.assert_called_once_with('vnics', {'inst1': 'INST1'})
