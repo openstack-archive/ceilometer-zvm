@@ -155,3 +155,11 @@ class TestZVMInspector(base.BaseTestCase):
         self.assertEqual(2, cpu_stat.number)
         self.assertEqual(99999999, cpu_stat.time)
         get_stat.assert_called_once_with('cpus', None)
+
+    @mock.patch("ceilometer_zvm.compute.virt.zvm.inspector.ZVMInspector."
+                "_get_inst_stat")
+    def test_inspect_memory_usage(self, get_stat):
+        get_stat.return_value = {'used_memory': 1998}
+        mem_usage = self.inspector.inspect_memory_usage(None)
+        self.assertEqual(1998, mem_usage.usage)
+        get_stat.assert_called_once_with('memory.usage', None)

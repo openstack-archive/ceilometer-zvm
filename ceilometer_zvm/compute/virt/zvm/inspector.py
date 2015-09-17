@@ -134,7 +134,8 @@ class ZVMInspector(virt_inspector.Inspector):
                                        time=inst_stat['used_cpu_time'])
 
     def inspect_memory_usage(self, instance, duration=None):
-        pass
+        inst_stat = self._get_inst_stat('memory.usage', instance)
+        return virt_inspector.MemoryUsageStats(usage=inst_stat['used_memory'])
 
     def inspect_vnics(self, instance):
         pass
