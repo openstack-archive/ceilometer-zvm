@@ -264,7 +264,7 @@ def _log_warnings(resp):
     for msg in (resp['info'], resp['node'], resp['data']):
         msgstr = str(msg)
         if 'warn' in msgstr.lower():
-            LOG.warn(_("Warning from xCAT: %s") % msgstr)
+            LOG.warning(_("Warning from xCAT: %s") % msgstr)
 
 
 def _is_warning(err_str):
