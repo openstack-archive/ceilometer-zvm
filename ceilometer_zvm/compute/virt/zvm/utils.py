@@ -34,22 +34,35 @@ class ZVMException(inspector.InspectorException):
 
 
 class CacheData(object):
+    """Virtual machine stat cache."""
+    _CTYPES = ('cpumem', 'vnics')
 
     def __init__(self):
-        self.cache = {}
+        self._reset()
 
-    def set(self, inst_stat):
-        self.cache[inst_stat['nodename']] = inst_stat
+    def _reset(self):
+        self.cache = dict((tp, {}) for tp in self._CTYPES)
 
-    def get(self, inst_name):
-        return self.cache.get(inst_name, None)
+    def set(self, ctype, inst_stat):
+        """Set or update cache content.
 
-    def delete(self, inst_name):
-        if inst_name in self.cache:
-            del self.cache[inst_name]
+        @ctype:        cache type.
+        @inst_stat:    cache data.
+        """
+        self.cache[ctype][inst_stat['nodename']] = inst_stat
 
-    def clear(self):
-        self.cache = {}
+    def get(self, ctype, inst_name):
+        return self.cache[ctype].get(inst_name, None)
+
+    def delete(self, ctype, inst_name):
+        if inst_name in self.cache[ctype]:
+            del self.cache[ctype][inst_name]
+
+    def clear(self, ctype='all'):
+        if ctype == 'all':
+            self._reset()
+        else:
+            self.cache[ctype] = {}
 
 
 class XCATUrl(object):

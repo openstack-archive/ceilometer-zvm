@@ -93,7 +93,7 @@ class ZVMInspector(virt_inspector.Inspector):
                          'used_cpu_time': used_cpu_time,
                          'used_memory': used_memory}
 
-            self.cache.set(inst_stat)
+            self.cache.set('cpumem', inst_stat)
 
     def _update_inst_nic_stat(self, instances):
         vsw_dict = zvmutils.virutal_network_vswitch_query_iuo_stats(
@@ -109,7 +109,7 @@ class ZVMInspector(virt_inspector.Inspector):
                                          'nic_fr_tx': int(nic['nic_fr_tx']),
                                          'nic_rx': int(nic['nic_rx']),
                                          'nic_tx': int(nic['nic_tx'])}
-                            inst_stat = self.cache.get(inst_name)
+                            inst_stat = self.cache.get('vnics', inst_name)
                             if inst_stat is None:
                                 inst_stat = {
                                     'nodename': inst_name,
@@ -118,7 +118,7 @@ class ZVMInspector(virt_inspector.Inspector):
                                 }
                             else:
                                 inst_stat['nics'].append(nic_entry)
-                            self.cache.set(inst_stat)
+                            self.cache.set('vnics', inst_stat)
 
     def _update_cache(self, meter, instances={}):
         if instances == {}:
@@ -127,10 +127,9 @@ class ZVMInspector(virt_inspector.Inspector):
                                      CONF.zvm.cache_update_interval)
             instances = self.instances = zvmutils.list_instances(
                                                                 self.zhcp_info)
-
-        if meter in ('cpus', 'memory.usage'):
+        if meter == 'cpumem':
             self._update_inst_cpu_mem_stat(instances)
-        elif meter in ('vnics',):
+        if meter == 'vnics':
             self._update_inst_nic_stat(instances)
 
     def _check_expiration_and_update_cache(self, meter):
@@ -142,13 +141,13 @@ class ZVMInspector(virt_inspector.Inspector):
         self._check_expiration_and_update_cache(meter)
 
         inst_name = zvmutils.get_inst_name(instance)
-        inst_stat = self.cache.get(inst_name)
+        inst_stat = self.cache.get(meter, inst_name)
 
         if inst_stat is None:
             userid = (self.instances.get(inst_name) or
                         zvmutils.get_userid(inst_name))
             self._update_cache(meter, {inst_name: userid})
-            inst_stat = self.cache.get(inst_name)
+            inst_stat = self.cache.get(meter, inst_name)
 
         if inst_stat is None:
             raise virt_inspector.InstanceNotFoundException()
@@ -156,12 +155,12 @@ class ZVMInspector(virt_inspector.Inspector):
             return inst_stat
 
     def inspect_cpus(self, instance):
-        inst_stat = self._get_inst_stat('cpus', instance)
+        inst_stat = self._get_inst_stat('cpumem', instance)
         return virt_inspector.CPUStats(number=inst_stat['guest_cpus'],
                                        time=inst_stat['used_cpu_time'])
 
     def inspect_memory_usage(self, instance, duration=None):
-        inst_stat = self._get_inst_stat('memory.usage', instance)
+        inst_stat = self._get_inst_stat('cpumem', instance)
         return virt_inspector.MemoryUsageStats(usage=inst_stat['used_memory'])
 
     def inspect_vnics(self, instance):

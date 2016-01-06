@@ -307,20 +307,23 @@ class TestCacheData(base.BaseTestCase):
         super(TestCacheData, self).tearDown()
 
     def test_set(self):
-        self.cache_data.set({'nodename': 'node'})
-        self.assertEqual({'nodename': 'node'}, self.cache_data.cache['node'])
+        self.cache_data.set('cpumem', {'nodename': 'node'})
+        self.assertEqual({'nodename': 'node'},
+                         self.cache_data.cache['cpumem']['node'])
 
     def test_get(self):
-        self.cache_data.set({'nodename': 'node'})
-        self.assertEqual({'nodename': 'node'}, self.cache_data.get('node'))
+        self.cache_data.set('vnics', {'nodename': 'node'})
+        self.assertEqual({'nodename': 'node'},
+                         self.cache_data.get('vnics', 'node'))
 
     def test_delete(self):
-        self.cache_data.set({'nodename': 'node'})
-        self.cache_data.delete('node')
-        self.assertEqual(None, self.cache_data.get('node'))
+        self.cache_data.set('cpumem', {'nodename': 'node'})
+        self.cache_data.delete('cpumem', 'node')
+        self.assertEqual(None, self.cache_data.get('cpumem', 'node'))
 
     def test_clear(self):
-        self.cache_data.set({'nodename': 'node1'})
-        self.cache_data.set({'nodename': 'node2'})
+        self.cache_data.set('cpumem', {'nodename': 'node1'})
+        self.cache_data.set('vnics', {'nodename': 'node2'})
         self.cache_data.clear()
-        self.assertEqual({}, self.cache_data.cache)
+        self.assertEqual({'cpumem': {}, 'vnics': {}},
+                         self.cache_data.cache)
