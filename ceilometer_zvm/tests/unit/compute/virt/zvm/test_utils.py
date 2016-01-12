@@ -319,7 +319,7 @@ class TestCacheData(base.BaseTestCase):
     def test_delete(self):
         self.cache_data.set('cpumem', {'nodename': 'node'})
         self.cache_data.delete('cpumem', 'node')
-        self.assertEqual(None, self.cache_data.get('cpumem', 'node'))
+        self.assertIsNone(self.cache_data.get('cpumem', 'node'))
 
     def test_clear(self):
         self.cache_data.set('cpumem', {'nodename': 'node1'})
