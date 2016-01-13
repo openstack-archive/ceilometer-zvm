@@ -14,6 +14,7 @@
 
 
 from ceilometer.compute.virt import inspector as virt_inspector
+from ceilometer.i18n import _LE
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import timeutils
@@ -138,9 +139,15 @@ class ZVMInspector(virt_inspector.Inspector):
             self._update_cache(meter)
 
     def _get_inst_stat(self, meter, instance):
+        inst_name = zvmutils.get_inst_name(instance)
+        # zvm inspector can not get instance info in shutdown stat
+        if zvmutils.get_inst_power_state(instance) == 0x04:
+            msg = _LE("Can not get vm info in shutdown state "
+                      "for %s") % inst_name
+            raise virt_inspector.InstanceShutOffException(msg)
+
         self._check_expiration_and_update_cache(meter)
 
-        inst_name = zvmutils.get_inst_name(instance)
         inst_stat = self.cache.get(meter, inst_name)
 
         if inst_stat is None:
@@ -150,7 +157,8 @@ class ZVMInspector(virt_inspector.Inspector):
             inst_stat = self.cache.get(meter, inst_name)
 
         if inst_stat is None:
-            raise virt_inspector.InstanceNotFoundException()
+            msg = _LE("Can not get vm info for %s") % inst_name
+            raise virt_inspector.InstanceNotFoundException(msg)
         else:
             return inst_stat
 

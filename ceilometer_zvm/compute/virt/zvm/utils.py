@@ -235,11 +235,6 @@ def translate_xcat_resp(rawdata, dirt):
                 data[k] = ls[(ls.find(dirt[k]) + len(dirt[k])):].strip(' "')
                 break
 
-    if data == {}:
-        msg = _("No value matched with keywords. Raw Data: %(raw)s; "
-                "Keywords: %(kws)s") % {'raw': rawdata, 'kws': str(dirt)}
-        raise ZVMException(msg)
-
     return data
 
 
@@ -375,13 +370,18 @@ def image_performance_query(zhcp_node, inst_list):
         rpi_list = raw_data.split("".join((zhcp_node, ": \n")))
         for rpi in rpi_list:
             pi = translate_xcat_resp(rpi, ipq_kws)
-            pi_dict[pi['userid']] = pi
+            if pi.get('userid') is not None:
+                pi_dict[pi['userid']] = pi
 
     return pi_dict
 
 
 def get_inst_name(instance):
     return getattr(instance, 'OS-EXT-SRV-ATTR:instance_name', None)
+
+
+def get_inst_power_state(instance):
+    return getattr(instance, 'OS-EXT-STS:power_state', None)
 
 
 def virutal_network_vswitch_query_iuo_stats(zhcp_node):
