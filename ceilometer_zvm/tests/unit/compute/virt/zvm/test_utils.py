@@ -190,13 +190,6 @@ class TestZVMUtils(base.BaseTestCase):
                          zvmutils.image_performance_query('zhcp', inst_list))
 
     @mock.patch.object(zvmutils, 'xdsh')
-    def test_image_performance_query_invalid_xdsh_resp(self, dsh):
-        dsh.return_value = {'data': 'invalid data'}
-        inst_list = {'inst1': 'INST1', 'inst2': 'INST2'}
-        self.assertRaises(zvmutils.ZVMException,
-                          zvmutils.image_performance_query, 'zhcp', inst_list)
-
-    @mock.patch.object(zvmutils, 'xdsh')
     def test_virutal_network_vswitch_query_iuo_stats(self, dsh):
         vsw_data = ['zhcp11: vswitch count: 2\n'
                     'zhcp11: \n'
