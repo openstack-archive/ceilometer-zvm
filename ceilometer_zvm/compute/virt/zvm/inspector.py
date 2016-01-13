@@ -150,7 +150,11 @@ class ZVMInspector(virt_inspector.Inspector):
             inst_stat = self.cache.get(meter, inst_name)
 
         if inst_stat is None:
-            raise virt_inspector.InstanceNotFoundException()
+            if inst_name not in list(self.instances.keys()):
+                raise virt_inspector.InstanceNotFoundException()
+            else:
+                # can not get virtual machine data in shutdown stat
+                raise virt_inspector.InstanceShutOffException()
         else:
             return inst_stat
 

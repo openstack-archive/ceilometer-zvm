@@ -134,6 +134,24 @@ class TestZVMInspector(base.BaseTestCase):
     @mock.patch("ceilometer_zvm.compute.virt.zvm.inspector.ZVMInspector."
                 "_update_cache")
     @mock.patch.object(zvmutils, 'get_userid')
+    @mock.patch.object(zvmutils, 'get_inst_name')
+    @mock.patch("ceilometer_zvm.compute.virt.zvm.inspector.ZVMInspector."
+                "_check_expiration_and_update_cache")
+    def test_get_inst_stat_shutoff(self, check_update, get_name,
+                                   get_uid, update):
+        get_name.return_value = 'inst1'
+        get_uid.return_value = 'INST1'
+        self.inspector.instances = {'inst1': 'INST1'}
+
+        self.assertRaises(virt_inspertor.InstanceShutOffException,
+                          self.inspector._get_inst_stat, 'cpumem',
+                          {'inst1': 'INST1'})
+        check_update.assert_called_once_with('cpumem')
+        update.assert_called_once_with('cpumem', {'inst1': 'INST1'})
+
+    @mock.patch("ceilometer_zvm.compute.virt.zvm.inspector.ZVMInspector."
+                "_update_cache")
+    @mock.patch.object(zvmutils, 'get_userid')
     @mock.patch("ceilometer_zvm.compute.virt.zvm.utils.CacheData.get")
     @mock.patch.object(zvmutils, 'get_inst_name')
     @mock.patch("ceilometer_zvm.compute.virt.zvm.inspector.ZVMInspector."
