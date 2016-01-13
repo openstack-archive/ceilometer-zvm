@@ -131,6 +131,19 @@ class TestZVMInspector(base.BaseTestCase):
         check_update.assert_called_once_with('cpumem')
         update.assert_called_once_with('cpumem', {'inst1': 'INST1'})
 
+    @mock.patch.object(zvmutils, 'get_inst_power_state')
+    @mock.patch.object(zvmutils, 'get_inst_name')
+    def test_get_inst_stat_shutoff(self, get_name, get_power_stat):
+        get_name.return_value = 'inst1'
+        get_power_stat.return_value = 0x04
+        self.inspector.instances = {'inst1': 'INST1'}
+
+        self.assertRaises(virt_inspertor.InstanceShutOffException,
+                          self.inspector._get_inst_stat, 'cpumem',
+                          {'inst1': 'INST1'})
+        get_name.assert_called_once_with({'inst1': 'INST1'})
+        get_power_stat.assert_called_once_with({'inst1': 'INST1'})
+
     @mock.patch("ceilometer_zvm.compute.virt.zvm.inspector.ZVMInspector."
                 "_update_cache")
     @mock.patch.object(zvmutils, 'get_userid')
