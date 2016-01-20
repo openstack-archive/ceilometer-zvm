@@ -1,0 +1,11 @@
+Code-Review+1: venkatamahesh <venkatamaheshkotha@gmail.com>
+Code-Review+1: Allen <chen.qiaomin@99cloud.net>
+Code-Review+1: Zi Lian Ji <jizilian@cn.ibm.com>
+Code-Review+2: jichenjc <jichenjc@cn.ibm.com>
+Workflow+1: jichenjc <jichenjc@cn.ibm.com>
+Verified+2: Jenkins
+Submitted-by: Jenkins
+Submitted-at: Wed, 20 Jan 2016 10:33:54 +0000
+Reviewed-on: https://review.openstack.org/266132
+Project: openstack/ceilometer-zvm
+Branch: refs/heads/master
