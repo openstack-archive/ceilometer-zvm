@@ -1,0 +1,8 @@
+Code-Review+2: jichenjc <jichenjc@cn.ibm.com>
+Workflow+1: jichenjc <jichenjc@cn.ibm.com>
+Verified+2: Jenkins
+Submitted-by: Jenkins
+Submitted-at: Fri, 22 Jan 2016 10:42:32 +0000
+Reviewed-on: https://review.openstack.org/266733
+Project: openstack/ceilometer-zvm
+Branch: refs/heads/master
