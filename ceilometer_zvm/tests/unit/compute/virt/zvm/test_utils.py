@@ -119,7 +119,7 @@ class TestZVMUtils(base.BaseTestCase):
         zvmutils.xdsh('node', 'cmds')
         xcat_req.assert_any_call('PUT',
             '/xcatws/nodes/node/dsh?userName=user&password=pwd&format=json',
-            ['command=cmds'])
+            ['command=cmds', 'options=-q'])
 
     @mock.patch('ceilometer_zvm.compute.virt.zvm.utils.xcat_request')
     def test_get_node_hostname(self, xcat_req):
