@@ -49,6 +49,9 @@ zvm_ops = [
     cfg.IntOpt('cache_update_interval',
                default=600,
                help="Cached data update interval"),
+    cfg.StrOpt('zvm_xcat_ca_file',
+               default=None,
+               help="CA file for https connection to xcat"),
 ]
 
 

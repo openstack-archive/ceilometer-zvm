@@ -15,11 +15,14 @@
 
 import contextlib
 import functools
-import httplib
+import os
+from six.moves import http_client as httplib
 import socket
+import ssl
 
 from ceilometer.compute.virt import inspector
 from ceilometer.i18n import _
+from ceilometer.i18n import _LW
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
@@ -102,14 +105,56 @@ class XCATUrl(object):
         return self._append_addp(rurl, addp)
 
 
+class HTTPSClientAuthConnection(httplib.HTTPSConnection):
+    """For https://wiki.openstack.org/wiki/OSSN/OSSN-0033."""
+
+    def __init__(self, host, port, ca_file, timeout=None, key_file=None,
+                 cert_file=None):
+        httplib.HTTPSConnection.__init__(self, host, port,
+                                         key_file=key_file,
+                                         cert_file=cert_file)
+        self.key_file = key_file
+        self.cert_file = cert_file
+        self.ca_file = ca_file
+        self.timeout = timeout
+        self.use_ca = True
+
+        if self.ca_file is None:
+            LOG.debug("no xCAT CA file specified, this is considered "
+                      "not secure")
+            self.use_ca = False
+
+    def connect(self):
+        sock = socket.create_connection((self.host, self.port), self.timeout)
+        if self._tunnel_host:
+            self.sock = sock
+            self._tunnel()
+
+        if (self.ca_file is not None and
+                not os.path.exists(self.ca_file)):
+            LOG.warning(_LW("the CA file %(ca_file) does not exist!"),
+                        {'ca_file': self.ca_file})
+            self.use_ca = False
+
+        if not self.use_ca:
+            self.sock = ssl.wrap_socket(sock, self.key_file, self.cert_file,
+                                        cert_reqs=ssl.CERT_NONE)
+        else:
+            self.sock = ssl.wrap_socket(sock, self.key_file, self.cert_file,
+                                        ca_certs=self.ca_file,
+                                        cert_reqs=ssl.CERT_REQUIRED)
+
+
 class XCATConnection(object):
     """Https requests to xCAT web service."""
 
     def __init__(self):
         """Initialize https connection to xCAT service."""
         self.host = CONF.zvm.zvm_xcat_server
-        self.conn = httplib.HTTPSConnection(self.host,
-                                timeout=CONF.zvm.zvm_xcat_connection_timeout)
+        self.port = 443
+        self.conn = HTTPSClientAuthConnection(self.host, self.port,
+                        CONF.zvm.zvm_xcat_ca_file,
+                        timeout=CONF.zvm.zvm_xcat_connection_timeout)
 
     def request(self, method, url, body=None, headers={}):
         """Send https request to xCAT server.
