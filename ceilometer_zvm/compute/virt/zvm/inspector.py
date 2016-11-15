@@ -104,12 +104,17 @@ class ZVMInspector(virt_inspector.Inspector):
                 for nic in vsw['nics']:
                     for inst_name, userid in instances.items():
                         if nic['userid'].upper() == userid.upper():
-                            nic_entry = {'vswitch_name': vsw['vswitch_name'],
-                                         'nic_vdev': nic['vdev'],
-                                         'nic_fr_rx': int(nic['nic_fr_rx']),
-                                         'nic_fr_tx': int(nic['nic_fr_tx']),
-                                         'nic_rx': int(nic['nic_rx']),
-                                         'nic_tx': int(nic['nic_tx'])}
+                            nic_entry = {
+                                'vswitch_name': vsw['vswitch_name'],
+                                'nic_vdev': nic['vdev'],
+                                'nic_fr_rx': int(nic['nic_fr_rx']),
+                                'nic_fr_tx': int(nic['nic_fr_tx']),
+                                'nic_fr_rx_dsc': int(nic['nic_fr_rx_dsc']),
+                                'nic_fr_tx_dsc': int(nic['nic_fr_tx_dsc']),
+                                'nic_fr_rx_err': int(nic['nic_fr_rx_err']),
+                                'nic_fr_tx_err': int(nic['nic_fr_tx_err']),
+                                'nic_rx': int(nic['nic_rx']),
+                                'nic_tx': int(nic['nic_tx'])}
                             inst_stat = self.cache.get('vnics', inst_name)
                             if inst_stat is None:
                                 inst_stat = {
@@ -185,5 +190,9 @@ class ZVMInspector(virt_inspector.Inspector):
                 rx_bytes=nic['nic_rx'],
                 rx_packets=nic['nic_fr_rx'],
                 tx_bytes=nic['nic_tx'],
-                tx_packets=nic['nic_fr_tx'])
+                tx_packets=nic['nic_fr_tx'],
+                rx_drop=nic['nic_fr_rx_dsc'],
+                tx_drop=nic['nic_fr_tx_dsc'],
+                rx_errors=nic['nic_fr_rx_err'],
+                tx_errors=nic['nic_fr_tx_err'])
             yield (interface, stats)

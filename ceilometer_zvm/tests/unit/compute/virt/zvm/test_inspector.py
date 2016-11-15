@@ -258,18 +258,26 @@ class TestZVMInspector(base.BaseTestCase):
         self.inspector._update_inst_nic_stat(instances)
 
         exp_inst1_nics_data = [
-            {'nic_vdev': '0600',
-             'vswitch_name': 'XCATVSW1',
-             'nic_rx': 103024058,
-             'nic_fr_rx': 573952,
+            {'nic_fr_rx': 573952,
+             'nic_fr_rx_dsc': 0,
+             'nic_fr_rx_err': 0,
              'nic_fr_tx': 548780,
-             'nic_tx': 102030890},
-            {'nic_vdev': '1000',
-             'vswitch_name': 'XCATVSW2',
-             'nic_rx': 4684435,
-             'nic_fr_rx': 34958,
+             'nic_fr_tx_dsc': 0,
+             'nic_fr_tx_err': 4,
+             'nic_rx': 103024058,
+             'nic_tx': 102030890,
+             'nic_vdev': '0600',
+             'vswitch_name': 'XCATVSW1'},
+            {'nic_fr_rx': 34958,
+             'nic_fr_rx_dsc': 0,
+             'nic_fr_rx_err': 0,
              'nic_fr_tx': 16211,
-             'nic_tx': 3316601}
+             'nic_fr_tx_dsc': 0,
+             'nic_fr_tx_err': 0,
+             'nic_rx': 4684435,
+             'nic_tx': 3316601,
+             'nic_vdev': '1000',
+             'vswitch_name': 'XCATVSW2'}
         ]
         self.assertEqual(exp_inst1_nics_data,
                          self.inspector.cache.get('vnics', 'inst1')['nics'])
@@ -286,13 +294,21 @@ class TestZVMInspector(base.BaseTestCase):
                                       'nic_fr_rx': 99999,
                                       'nic_fr_tx': 99999,
                                       'nic_rx': 9999999,
-                                      'nic_tx': 9999999},
+                                      'nic_tx': 9999999,
+                                      'nic_fr_rx_dsc': 0,
+                                      'nic_fr_tx_dsc': 0,
+                                      'nic_fr_rx_err': 0,
+                                      'nic_fr_tx_err': 0},
                                       {'vswitch_name': 'vsw2',
                                       'nic_vdev': '0700',
                                       'nic_fr_rx': 88888,
                                       'nic_fr_tx': 88888,
                                       'nic_rx': 8888888,
-                                      'nic_tx': 8888888}]}
+                                      'nic_tx': 8888888,
+                                      'nic_fr_rx_dsc': 0,
+                                      'nic_fr_tx_dsc': 0,
+                                      'nic_fr_rx_err': 0,
+                                      'nic_fr_tx_err': 0}]}
         nic, stat = list(self.inspector.inspect_vnics({'inst1': 'INST1'}))[0]
         if nic.name == 'vsw1_INST1_0600':
             self.assertEqual(99999, stat.rx_packets)
