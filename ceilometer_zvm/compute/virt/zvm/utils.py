@@ -24,12 +24,10 @@ from ceilometer.compute.virt import inspector
 from ceilometer.i18n import _
 from ceilometer.i18n import _LW
 from oslo_config import cfg
-from oslo_log import log as logging
 from oslo_serialization import jsonutils
 
 
 CONF = cfg.CONF
-LOG = logging.getLogger(__name__)
 
 
 class ZVMException(inspector.InspectorException):

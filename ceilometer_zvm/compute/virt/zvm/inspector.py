@@ -16,7 +16,6 @@
 from ceilometer.compute.virt import inspector as virt_inspector
 from ceilometer.i18n import _
 from oslo_config import cfg
-from oslo_log import log
 from oslo_utils import timeutils
 from oslo_utils import units
 
@@ -57,8 +56,6 @@ zvm_ops = [
 
 CONF = cfg.CONF
 CONF.register_opts(zvm_ops, group='zvm')
-
-LOG = log.getLogger(__name__)
 
 
 class ZVMInspector(virt_inspector.Inspector):
