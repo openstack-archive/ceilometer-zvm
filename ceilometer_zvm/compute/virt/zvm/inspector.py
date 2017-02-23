@@ -179,10 +179,8 @@ class ZVMInspector(virt_inspector.Inspector):
     def inspect_vnics(self, instance):
         inst_stat = self._get_inst_stat('vnics', instance)
         for nic in inst_stat['nics']:
-            nic_id = '_'.join((nic['vswitch_name'], inst_stat['userid'],
-                               nic['nic_vdev']))
             interface = virt_inspector.Interface(
-                name=nic_id,
+                name=nic['nic_vdev'],
                 mac=None,
                 fref=None,
                 parameters=None)

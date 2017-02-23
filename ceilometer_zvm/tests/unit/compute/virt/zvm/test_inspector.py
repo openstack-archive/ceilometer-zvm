@@ -310,7 +310,7 @@ class TestZVMInspector(base.BaseTestCase):
                                       'nic_fr_rx_err': 0,
                                       'nic_fr_tx_err': 0}]}
         nic, stat = list(self.inspector.inspect_vnics({'inst1': 'INST1'}))[0]
-        if nic.name == 'vsw1_INST1_0600':
+        if nic.name == '0600':
             self.assertEqual(99999, stat.rx_packets)
         else:
             self.assertEqual(8888888, stat.rx_bytes)
