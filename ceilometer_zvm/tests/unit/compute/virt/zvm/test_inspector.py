@@ -14,304 +14,202 @@
 
 
 import mock
+import unittest
 
-from ceilometer.compute.virt import inspector as virt_inspertor
-from oslo_config import fixture as fixture_config
-from oslo_utils import timeutils
-from oslotest import base
-
-from ceilometer_zvm.compute.virt.zvm import inspector as zvm_inspector
+from ceilometer.compute.virt import inspector as virt_inspector
+from ceilometer_zvm.compute.virt.zvm import conf
+from ceilometer_zvm.compute.virt.zvm import exception as zvmexception
+from ceilometer_zvm.compute.virt.zvm import inspector as zvminspector
 from ceilometer_zvm.compute.virt.zvm import utils as zvmutils
 
 
-class TestZVMInspector(base.BaseTestCase):
+CONF = conf.CONF
+
+
+class TestZVMInspector(unittest.TestCase):
 
     def setUp(self):
-        self.CONF = self.useFixture(
-                            fixture_config.Config(zvm_inspector.CONF)).conf
-        self.CONF.set_override('xcat_zhcp_nodename', 'zhcp', 'zvm')
-        super(TestZVMInspector, self).setUp()
+        unittest.TestCase.setUp(self)
+        CONF.zvm_cloud_connector_url = 'https://1.1.1.1:1111'
+        self._inspector = zvminspector.ZVMInspector()
+        self._inst = mock.MagicMock()
+        self._stats_dict = {'guest_cpus': 1,
+                            'used_cpu_time_us': 7185838,
+                            'elapsed_cpu_time_us': 35232895,
+                            'min_cpu_count': 2,
+                            'max_cpu_limit': 10000,
+                            'samples_cpu_in_use': 0,
+                            'samples_cpu_delay': 0,
+                            'used_mem_kb': 390232,
+                            'max_mem_kb': 3097152,
+                            'min_mem_kb': 0,
+                            'shared_mem_kb': 5222192
+                            }
+        self._vnics_list = [{'vswitch_name': 'vsw1',
+                            'nic_vdev': '0600',
+                            'nic_fr_rx': 99999,
+                            'nic_fr_tx': 99999,
+                            'nic_rx': 9999999,
+                            'nic_tx': 9999999,
+                            'nic_fr_rx_dsc': 0,
+                            'nic_fr_tx_dsc': 0,
+                            'nic_fr_rx_err': 0,
+                            'nic_fr_tx_err': 0},
+                            {'vswitch_name': 'vsw2',
+                            'nic_vdev': '0700',
+                            'nic_fr_rx': 88888,
+                            'nic_fr_tx': 88888,
+                            'nic_rx': 8888888,
+                            'nic_tx': 8888888,
+                            'nic_fr_rx_dsc': 0,
+                            'nic_fr_tx_dsc': 0,
+                            'nic_fr_rx_err': 0,
+                            'nic_fr_tx_err': 0}]
 
-        get_nhn = mock.MagicMock(return_value='zhcp.com')
-        get_uid = mock.MagicMock(return_value='zhcp')
-        with mock.patch.multiple(zvmutils, get_node_hostname=get_nhn,
-                                 get_userid=get_uid):
-            self.inspector = zvm_inspector.ZVMInspector()
-
-    def test_init(self):
-        self.assertEqual('zhcp', self.inspector.zhcp_info['nodename'])
-        self.assertEqual('zhcp.com', self.inspector.zhcp_info['hostname'])
-        self.assertEqual('zhcp', self.inspector.zhcp_info['userid'])
-
-    @mock.patch.object(zvmutils, 'image_performance_query')
-    def test_update_inst_cpu_mem_stat(self, ipq):
-        ipq.return_value = {'INST1': {'userid': 'INST1',
-                                      'guest_cpus': '2',
-                                      'used_cpu_time': '1710205201 uS',
-                                      'used_memory': '4189268 KB'},
-                            'INST2': {'userid': 'INST2',
-                                      'guest_cpus': '4',
-                                      'used_cpu_time': '1710205201 uS',
-                                      'used_memory': '4189268 KB'}}
-        inst_list = {'inst1': 'INST1', 'inst2': 'INST2'}
-        self.inspector._update_inst_cpu_mem_stat(inst_list)
-
-        exp1 = {'guest_cpus': 2,
-                'nodename': 'inst1',
-                'used_cpu_time': 1710205201000,
-                'used_memory': 4091,
-                'userid': 'INST1'}
-        self.assertEqual(exp1, self.inspector.cache.get('cpumem', 'inst1'))
-        self.assertEqual(4,
-            self.inspector.cache.get('cpumem', 'inst2')['guest_cpus'])
-
-    @mock.patch.object(zvmutils, 'image_performance_query')
-    def test_update_inst_cpu_mem_stat_invalid_data(self, ipq):
-        ipq.return_value = {'INST1': {'userid': 'INST1', 'guest_cpus': 's'}}
-        self.assertRaises(zvmutils.ZVMException,
-                          self.inspector._update_inst_cpu_mem_stat,
-                          {'inst1': 'INST1'})
-
-    @mock.patch("ceilometer_zvm.compute.virt.zvm.inspector.ZVMInspector."
-                "_update_inst_cpu_mem_stat")
-    @mock.patch.object(zvmutils, 'list_instances')
-    def test_update_cache_all(self, list_inst, upd):
-        inst_list = {'inst1': 'INST1', 'inst2': 'INST2'}
-        list_inst.return_value = inst_list
-        self.inspector._update_cache("cpumem", {})
-        list_inst.assert_called_with(self.inspector.zhcp_info)
-        upd.assert_called_with(inst_list)
+    @mock.patch.object(zvminspector.ZVMInspector, "_inspect_inst_data")
+    def test_inspect_instance(self, inspect_inst):
+        inspect_inst.return_value = self._stats_dict
+        rdata = self._inspector.inspect_instance(self._inst, 0)
+        inspect_inst.assert_called_once_with(self._inst, 'stats')
+        self.assertIsInstance(rdata, virt_inspector.InstanceStats)
+        self.assertEqual(rdata.cpu_number, 1)
+        self.assertEqual(rdata.cpu_time, 7185838000)
+        self.assertEqual(rdata.memory_usage, 381)
 
     @mock.patch("ceilometer_zvm.compute.virt.zvm.inspector.ZVMInspector."
-                "_update_inst_cpu_mem_stat")
-    def test_update_cache_one_inst(self, upd):
-        inst = {'inst1': 'INST1'}
-        self.inspector._update_cache('cpumem', inst)
-        upd.assert_called_with(inst)
-
-    @mock.patch("ceilometer_zvm.compute.virt.zvm.inspector.ZVMInspector."
-                "_update_cache")
-    def test_check_expiration_and_update_cache(self, udc):
-        self.inspector._check_expiration_and_update_cache('cpus')
-        udc.assert_called_once_with('cpus')
-
-    @mock.patch("ceilometer_zvm.compute.virt.zvm.inspector.ZVMInspector."
-                "_update_cache")
-    def test_check_expiration_and_update_cache_no_update(self, udc):
-        self.inspector.cache_expiration = timeutils.utcnow_ts() + 100
-        self.inspector._check_expiration_and_update_cache('cpus')
-        udc.assert_not_called()
-
+                "_inspect_inst_data")
     @mock.patch.object(zvmutils, 'get_inst_name')
-    @mock.patch("ceilometer_zvm.compute.virt.zvm.inspector.ZVMInspector."
-                "_check_expiration_and_update_cache")
-    def test_get_inst_stat(self, check_update, get_name):
-        get_name.return_value = 'inst1'
-        self.inspector.cache.set('cpumem',
-                                 {'guest_cpus': 2, 'nodename': 'inst1'})
+    def test_inspect_vnics(self, get_inst_name, inspect_data):
+        get_inst_name.return_value = 'INST1'
+        inspect_data.return_value = self._vnics_list
+        interface = list(self._inspector.inspect_vnics({'inst1': 'INST1'}))[0]
+        if interface.name == '0600':
+            self.assertEqual(99999, interface.rx_packets)
+        else:
+            self.assertEqual(8888888, interface.rx_bytes)
+        inspect_data.assert_called_once_with({'inst1': 'INST1'}, 'vnics')
 
-        inst_stat = self.inspector._get_inst_stat('cpumem', {'inst1': 'INST1'})
-        self.assertEqual(2, inst_stat['guest_cpus'])
-        check_update.assert_called_once_with('cpumem')
-
-    @mock.patch("ceilometer_zvm.compute.virt.zvm.inspector.ZVMInspector."
-                "_update_cache")
-    @mock.patch.object(zvmutils, 'get_userid')
-    @mock.patch.object(zvmutils, 'get_inst_name')
-    @mock.patch("ceilometer_zvm.compute.virt.zvm.inspector.ZVMInspector."
-                "_check_expiration_and_update_cache")
-    def test_get_inst_stat_not_found(self, check_update, get_name,
-                                     get_uid, update):
-        get_name.return_value = 'inst1'
-        get_uid.return_value = 'INST1'
-
-        self.assertRaises(virt_inspertor.InstanceNotFoundException,
-                          self.inspector._get_inst_stat, 'cpumem',
-                          {'inst1': 'INST1'})
-        check_update.assert_called_once_with('cpumem')
-        update.assert_called_once_with('cpumem', {'inst1': 'INST1'})
-
+    @mock.patch.object(zvmutils.zVMConnectorRequestHandler, 'call')
     @mock.patch.object(zvmutils, 'get_inst_power_state')
     @mock.patch.object(zvmutils, 'get_inst_name')
-    def test_get_inst_stat_shutoff(self, get_name, get_power_stat):
-        get_name.return_value = 'inst1'
-        get_power_stat.return_value = 0x04
-        self.inspector.instances = {'inst1': 'INST1'}
+    def test_private_inspect_inst_type_stats(self, inst_name, inst_power_state,
+                                             sdkclient_call):
+        inst_name.return_value = 'FAKEINST'
+        inst_power_state.return_value = 0x01
+        sdkclient_call.return_value = {'FAKEINST': self._stats_dict}
+        rdata = self._inspector._inspect_inst_data(self._inst, 'stats')
+        inst_name.assert_called_once_with(self._inst)
+        inst_power_state.assert_called_once_with(self._inst)
+        sdkclient_call.assert_called_once_with('guest_inspect_stats',
+                                               'FAKEINST')
+        self.assertDictEqual(rdata, self._stats_dict)
 
-        self.assertRaises(virt_inspertor.InstanceShutOffException,
-                          self.inspector._get_inst_stat, 'cpumem',
-                          {'inst1': 'INST1'})
-        get_name.assert_called_once_with({'inst1': 'INST1'})
-        get_power_stat.assert_called_once_with({'inst1': 'INST1'})
-
-    @mock.patch("ceilometer_zvm.compute.virt.zvm.inspector.ZVMInspector."
-                "_update_cache")
-    @mock.patch.object(zvmutils, 'get_userid')
-    @mock.patch("ceilometer_zvm.compute.virt.zvm.utils.CacheData.get")
+    @mock.patch.object(zvmutils.zVMConnectorRequestHandler, 'call')
+    @mock.patch.object(zvmutils, 'get_inst_power_state')
     @mock.patch.object(zvmutils, 'get_inst_name')
-    @mock.patch("ceilometer_zvm.compute.virt.zvm.inspector.ZVMInspector."
-                "_check_expiration_and_update_cache")
-    def test_get_inst_stat_update_cache(self, check_update, get_name,
-                                        cache_get, get_uid, update):
-        get_name.return_value = 'inst1'
-        cache_get.side_effect = [None, {'guest_cpus': 2, 'nodename': 'inst1'}]
-        get_uid.return_value = 'INST1'
+    def test_private_inspect_inst_type_vnics(self, inst_name, inst_power_state,
+                                             sdkclient_call):
+        inst_name.return_value = 'FAKEINST'
+        inst_power_state.return_value = 0x01
+        sdkclient_call.return_value = {'FAKEINST': self._vnics_list}
+        rdata = self._inspector._inspect_inst_data(self._inst, 'vnics')
+        inst_name.assert_called_once_with(self._inst)
+        inst_power_state.assert_called_once_with(self._inst)
+        sdkclient_call.assert_called_once_with('guest_inspect_vnics',
+                                               'FAKEINST')
+        self.assertListEqual(rdata, self._vnics_list)
 
-        inst_stat = self.inspector._get_inst_stat('cpus', {'inst1': 'INST1'})
-        self.assertEqual(2, inst_stat['guest_cpus'])
-        check_update.assert_called_once_with('cpus')
-        update.assert_called_once_with('cpus', {'inst1': 'INST1'})
-
+    @mock.patch.object(zvmutils.zVMConnectorRequestHandler, 'call')
+    @mock.patch.object(zvmutils, 'get_inst_power_state')
     @mock.patch.object(zvmutils, 'get_inst_name')
-    @mock.patch("ceilometer_zvm.compute.virt.zvm.inspector.ZVMInspector."
-                "_check_expiration_and_update_cache")
-    def test_get_inst_stat_nics(self, check_update, get_name):
-        get_name.return_value = 'inst1'
-        self.inspector.cache.set(
-            'vnics',
-            {'nodename': 'inst1',
-             'userid': 'INST1',
-             'nics': [{'vswitch_name': 'vsw1',
-                       'nic_vdev': '0600',
-                       'nic_fr_rx': 99999,
-                       'nic_fr_tx': 99999,
-                       'nic_rx': 9999999,
-                       'nic_tx': 9999999},
-                      {'vswitch_name': 'vsw2',
-                       'nic_vdev': '0700',
-                       'nic_fr_rx': 88888,
-                       'nic_fr_tx': 88888,
-                       'nic_rx': 8888888,
-                       'nic_tx': 8888888}]}
-        )
-        inst_stat = self.inspector._get_inst_stat('vnics', {'inst1': 'INST1'})
-        self.assertEqual(2, len(inst_stat['nics']))
-        check_update.assert_called_once_with('vnics')
+    def test_private_inspect_inst_power_off(self, inst_name,
+                                              inst_power_state,
+                                              sdkclient_call):
+        inst_name.return_value = 'FAKEINST'
+        inst_power_state.return_value = 0x04
+        self.assertRaises(virt_inspector.InstanceShutOffException,
+                          self._inspector._inspect_inst_data,
+                          self._inst, 'stats')
+        inst_name.assert_called_once_with(self._inst)
+        inst_power_state.assert_called_once_with(self._inst)
+        sdkclient_call.assert_not_called()
 
-    @mock.patch("ceilometer_zvm.compute.virt.zvm.inspector.ZVMInspector."
-                "_get_inst_stat")
-    def test_inspect_cpus(self, get_stat):
-        get_stat.return_value = {'guest_cpus': 2, 'used_cpu_time': 99999999}
-        cpu_stat = self.inspector.inspect_cpus(None)
-        self.assertEqual(2, cpu_stat.number)
-        self.assertEqual(99999999, cpu_stat.time)
-        get_stat.assert_called_once_with('cpumem', None)
+    @mock.patch.object(zvmutils.zVMConnectorRequestHandler, 'call')
+    @mock.patch.object(zvmutils, 'get_inst_power_state')
+    @mock.patch.object(zvmutils, 'get_inst_name')
+    def test_private_inspect_inst_not_exist(self, inst_name,
+                                              inst_power_state,
+                                              sdkclient_call):
+        inst_name.return_value = 'FAKEINST'
+        inst_power_state.return_value = 0x01
+        sdkclient_call.side_effect = [{},
+                                      zvmexception.ZVMConnectorRequestFailed(
+                                          msg='SDK Request Failed',
+                                          results={'overallRC': 404,
+                                                   'output': ''})
+                                      ]
+        self.assertRaises(virt_inspector.InstanceNotFoundException,
+                          self._inspector._inspect_inst_data,
+                          self._inst, 'stats')
+        inst_name.assert_called_once_with(self._inst)
+        inst_power_state.assert_called_once_with(self._inst)
 
-    @mock.patch("ceilometer_zvm.compute.virt.zvm.inspector.ZVMInspector."
-                "_get_inst_stat")
-    def test_inspect_memory_usage(self, get_stat):
-        get_stat.return_value = {'used_memory': 1998}
-        mem_usage = self.inspector.inspect_memory_usage(None)
-        self.assertEqual(1998, mem_usage.usage)
-        get_stat.assert_called_once_with('cpumem', None)
+    @mock.patch.object(zvmutils.zVMConnectorRequestHandler, 'call')
+    @mock.patch.object(zvmutils, 'get_inst_power_state')
+    @mock.patch.object(zvmutils, 'get_inst_name')
+    def test_private_inspect_inst_other_exception(self, inst_name,
+                                                    inst_power_state,
+                                                    sdkclient_call):
+        inst_name.return_value = 'FAKEINST'
+        inst_power_state.return_value = 0x01
+        sdkclient_call.side_effect = Exception()
+        self.assertRaises(virt_inspector.NoDataException,
+                          self._inspector._inspect_inst_data,
+                          self._inst, 'stats')
+        inst_name.assert_called_once_with(self._inst)
+        inst_power_state.assert_called_once_with(self._inst)
+        sdkclient_call.assert_called_with('guest_inspect_stats', 'FAKEINST')
 
-    @mock.patch.object(zvmutils, 'virutal_network_vswitch_query_iuo_stats')
-    def test_update_inst_nic_stat(self, vswq):
-        vsw_dist = {'vswitches': [
-            {'vswitch_name': 'XCATVSW1',
-                'nics': [
-                    {'nic_fr_rx_dsc': '0',
-                     'nic_fr_rx_err': '0',
-                     'nic_fr_tx_err': '4',
-                     'userid': 'INST1',
-                     'nic_rx': '103024058',
-                     'nic_fr_rx': '573952',
-                     'nic_fr_tx': '548780',
-                     'vdev': '0600',
-                     'nic_fr_tx_dsc': '0',
-                     'nic_tx': '102030890'},
-                    {'nic_fr_rx_dsc': '0',
-                     'nic_fr_rx_err': '0',
-                     'nic_fr_tx_err': '4',
-                     'userid': 'INST2',
-                     'nic_rx': '3111714',
-                     'nic_fr_rx': '17493',
-                     'nic_fr_tx': '16886',
-                     'vdev': '0600',
-                     'nic_fr_tx_dsc': '0',
-                     'nic_tx': '3172646'}]},
-            {'vswitch_name': 'XCATVSW2',
-                'nics': [
-                    {'nic_fr_rx_dsc': '0',
-                     'nic_fr_rx_err': '0',
-                     'nic_fr_tx_err': '0',
-                     'userid': 'INST1',
-                     'nic_rx': '4684435',
-                     'nic_fr_rx': '34958',
-                     'nic_fr_tx': '16211',
-                     'vdev': '1000',
-                     'nic_fr_tx_dsc': '0',
-                     'nic_tx': '3316601'},
-                    {'nic_fr_rx_dsc': '0',
-                     'nic_fr_rx_err': '0',
-                     'nic_fr_tx_err': '0',
-                     'userid': 'INST2',
-                     'nic_rx': '3577163',
-                     'nic_fr_rx': '27211',
-                     'nic_fr_tx': '12344',
-                     'vdev': '1000',
-                     'nic_fr_tx_dsc': '0',
-                     'nic_tx': '2515045'}]}],
-            'vswitch_count': 2}
-        vswq.return_value = vsw_dist
-        instances = {'inst1': 'INST1', 'inst2': 'INST2'}
-        self.inspector._update_inst_nic_stat(instances)
+    @mock.patch.object(zvmutils.zVMConnectorRequestHandler, 'call')
+    @mock.patch.object(zvmutils, 'get_inst_power_state')
+    @mock.patch.object(zvmutils, 'get_inst_name')
+    def test_private_inspect_inst_null_data_shutdown(self, inst_name,
+                                                       inst_power_state,
+                                                       sdkclient_call):
+        inst_name.return_value = 'FAKEINST'
+        inst_power_state.return_value = 0x01
+        sdkclient_call.side_effect = [{}, 'off']
+        self.assertRaises(virt_inspector.InstanceShutOffException,
+                          self._inspector._inspect_inst_data,
+                          self._inst, 'stats')
+        inst_name.assert_called_once_with(self._inst)
+        inst_power_state.assert_called_once_with(self._inst)
 
-        exp_inst1_nics_data = [
-            {'nic_fr_rx': 573952,
-             'nic_fr_rx_dsc': 0,
-             'nic_fr_rx_err': 0,
-             'nic_fr_tx': 548780,
-             'nic_fr_tx_dsc': 0,
-             'nic_fr_tx_err': 4,
-             'nic_rx': 103024058,
-             'nic_tx': 102030890,
-             'nic_vdev': '0600',
-             'vswitch_name': 'XCATVSW1'},
-            {'nic_fr_rx': 34958,
-             'nic_fr_rx_dsc': 0,
-             'nic_fr_rx_err': 0,
-             'nic_fr_tx': 16211,
-             'nic_fr_tx_dsc': 0,
-             'nic_fr_tx_err': 0,
-             'nic_rx': 4684435,
-             'nic_tx': 3316601,
-             'nic_vdev': '1000',
-             'vswitch_name': 'XCATVSW2'}
-        ]
-        self.assertEqual(exp_inst1_nics_data,
-                         self.inspector.cache.get('vnics', 'inst1')['nics'])
-        vswq.assert_called_once_with('zhcp')
+    @mock.patch.object(zvmutils.zVMConnectorRequestHandler, 'call')
+    @mock.patch.object(zvmutils, 'get_inst_power_state')
+    @mock.patch.object(zvmutils, 'get_inst_name')
+    def test_private_inspect_inst_null_data_active(self, inst_name,
+                                                     inst_power_state,
+                                                     sdkclient_call):
+        inst_name.return_value = 'FAKEINST'
+        inst_power_state.return_value = 0x01
+        sdkclient_call.side_effect = [{}, 'on']
+        self.assertRaises(virt_inspector.NoDataException,
+                          self._inspector._inspect_inst_data,
+                          self._inst, 'stats')
+        inst_name.assert_called_once_with(self._inst)
+        inst_power_state.assert_called_once_with(self._inst)
 
-    @mock.patch("ceilometer_zvm.compute.virt.zvm.inspector.ZVMInspector."
-                "_get_inst_stat")
-    def test_inspect_nics(self, get_stat):
-        get_stat.return_value = {'nodename': 'inst1',
-                                  'userid': 'INST1',
-                                  'nics': [
-                                      {'vswitch_name': 'vsw1',
-                                      'nic_vdev': '0600',
-                                      'nic_fr_rx': 99999,
-                                      'nic_fr_tx': 99999,
-                                      'nic_rx': 9999999,
-                                      'nic_tx': 9999999,
-                                      'nic_fr_rx_dsc': 0,
-                                      'nic_fr_tx_dsc': 0,
-                                      'nic_fr_rx_err': 0,
-                                      'nic_fr_tx_err': 0},
-                                      {'vswitch_name': 'vsw2',
-                                      'nic_vdev': '0700',
-                                      'nic_fr_rx': 88888,
-                                      'nic_fr_tx': 88888,
-                                      'nic_rx': 8888888,
-                                      'nic_tx': 8888888,
-                                      'nic_fr_rx_dsc': 0,
-                                      'nic_fr_tx_dsc': 0,
-                                      'nic_fr_rx_err': 0,
-                                      'nic_fr_tx_err': 0}]}
-        nic, stat = list(self.inspector.inspect_vnics({'inst1': 'INST1'}))[0]
-        if nic.name == '0600':
-            self.assertEqual(99999, stat.rx_packets)
-        else:
-            self.assertEqual(8888888, stat.rx_bytes)
-        get_stat.assert_called_once_with('vnics', {'inst1': 'INST1'})
+    @mock.patch.object(zvmutils.zVMConnectorRequestHandler, 'call')
+    @mock.patch.object(zvmutils, 'get_inst_power_state')
+    @mock.patch.object(zvmutils, 'get_inst_name')
+    def test_private_inspect_inst_null_data_unknown_exception(self,
+            inst_name, inst_power_state, sdkclient_call):
+        inst_name.return_value = 'FAKEINST'
+        inst_power_state.return_value = 0x01
+        sdkclient_call.side_effect = [{}, Exception()]
+        self.assertRaises(virt_inspector.NoDataException,
+                          self._inspector._inspect_inst_data,
+                          self._inst, 'stats')
+        inst_name.assert_called_once_with(self._inst)
+        inst_power_state.assert_called_once_with(self._inst)
