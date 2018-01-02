@@ -15,12 +15,10 @@
 
 import six.moves.urllib.parse as urlparse
 
-from ceilometer_zvm.compute.virt.zvm import conf
 from ceilometer_zvm.compute.virt.zvm import exception
 from oslo_log import log as logging
 from zvmconnector import connector
 
-CONF = conf.CONF
 LOG = logging.getLogger(__name__)
 
 
@@ -34,8 +32,8 @@ def get_inst_power_state(instance):
 
 class zVMConnectorRequestHandler(object):
 
-    def __init__(self):
-        _url = urlparse.urlparse(CONF.zvm_cloud_connector_url)
+    def __init__(self, connector_url):
+        _url = urlparse.urlparse(connector_url)
         self._conn = connector.ZVMConnector(_url.hostname, _url.port)
 
     def call(self, func_name, *args, **kwargs):

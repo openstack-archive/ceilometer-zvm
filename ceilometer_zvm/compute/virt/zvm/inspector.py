@@ -19,15 +19,28 @@ from ceilometer.compute.virt import inspector as virt_inspector
 from ceilometer.i18n import _
 from ceilometer_zvm.compute.virt.zvm import exception
 from ceilometer_zvm.compute.virt.zvm import utils as zvmutils
+from oslo_config import cfg
 from oslo_utils import units
+
+
+zvm_opts = [
+    cfg.URIOpt('zvm_cloud_connector_url',
+               help="""
+URL to be used to communicate with z/VM Cloud Connector.
+Example: https://10.10.10.1:8080.
+"""),
+            ]
 
 
 class ZVMInspector(virt_inspector.Inspector):
 
-    def __init__(self):
-        self._reqh = zvmutils.zVMConnectorRequestHandler()
+    def __init__(self, conf):
+        super(ZVMInspector, self).__init__(conf)
+        self.conf.register_opts(zvm_opts)
+        self._reqh = zvmutils.zVMConnectorRequestHandler(
+            self.conf.zvm_cloud_connector_url)
 
-    def inspect_vnics(self, instance):
+    def inspect_vnics(self, instance, duration):
         nics_data = self._inspect_inst_data(instance, 'vnics')
         # Construct the final result
         for nic in nics_data:

@@ -17,21 +17,18 @@ import mock
 import unittest
 
 from ceilometer.compute.virt import inspector as virt_inspector
-from ceilometer_zvm.compute.virt.zvm import conf
 from ceilometer_zvm.compute.virt.zvm import exception as zvmexception
 from ceilometer_zvm.compute.virt.zvm import inspector as zvminspector
 from ceilometer_zvm.compute.virt.zvm import utils as zvmutils
-
-
-CONF = conf.CONF
 
 
 class TestZVMInspector(unittest.TestCase):
 
     def setUp(self):
         unittest.TestCase.setUp(self)
-        CONF.zvm_cloud_connector_url = 'https://1.1.1.1:1111'
-        self._inspector = zvminspector.ZVMInspector()
+        conf = mock.Mock()
+        conf.zvm_cloud_connector_url = 'https://1.1.1.1:1111'
+        self._inspector = zvminspector.ZVMInspector(conf)
         self._inst = mock.MagicMock()
         self._stats_dict = {'guest_cpus': 1,
                             'used_cpu_time_us': 7185838,
@@ -82,7 +79,8 @@ class TestZVMInspector(unittest.TestCase):
     def test_inspect_vnics(self, get_inst_name, inspect_data):
         get_inst_name.return_value = 'INST1'
         inspect_data.return_value = self._vnics_list
-        interface = list(self._inspector.inspect_vnics({'inst1': 'INST1'}))[0]
+        interface = list(self._inspector.inspect_vnics(
+            {'inst1': 'INST1'}, 0))[0]
         if interface.name == '0600':
             self.assertEqual(99999, interface.rx_packets)
         else:
