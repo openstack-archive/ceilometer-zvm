@@ -88,7 +88,7 @@ class ZVMInspector(virt_inspector.Inspector):
                 inspect_data = self._reqh.call('guest_inspect_vnics',
                                                  inst_name)
         except Exception as err:
-            msg_nodata += (". Error: %s" % six.text_type(err))
+            msg_nodata += _(". Error: %s") % six.text_type(err)
             raise virt_inspector.NoDataException(msg_nodata)
 
         # Check the inst data is in the returned result
@@ -105,10 +105,10 @@ class ZVMInspector(virt_inspector.Inspector):
                     raise virt_inspector.InstanceNotFoundException(msg_notexist
                                                                    )
                 else:
-                    msg_nodata += (". Error: %s" % six.text_type(err))
+                    msg_nodata += _(". Error: %s") % six.text_type(err)
                     raise virt_inspector.NoDataException(msg_nodata)
             except Exception as err:
-                msg_nodata += (". Error: %s" % six.text_type(err))
+                msg_nodata += _(". Error: %s") % six.text_type(err)
                 raise virt_inspector.NoDataException(msg_nodata)
 
             if power_stat == 'off':
