@@ -29,6 +29,20 @@ zvm_opts = [
 URL to be used to communicate with z/VM Cloud Connector.
 Example: https://10.10.10.1:8080.
 """),
+    cfg.StrOpt('zvm_cloud_connector_token_file',
+               default=None,
+               help="""
+Token file that contains the admin token to be used when sending
+request to z/VM Cloud Connector.
+"""),
+    cfg.StrOpt('zvm_cloud_connector_ca_file',
+               default=None,
+               help="""
+CA certificate file to be used to verify z/VM Cloud Connector
+server certificate.
+
+A string, it must be a path to a CA bundle to use.
+"""),
             ]
 
 
@@ -38,7 +52,7 @@ class ZVMInspector(virt_inspector.Inspector):
         super(ZVMInspector, self).__init__(conf)
         self.conf.register_opts(zvm_opts)
         self._reqh = zvmutils.zVMConnectorRequestHandler(
-            self.conf.zvm_cloud_connector_url)
+            self.conf)
 
     def inspect_vnics(self, instance, duration):
         nics_data = self._inspect_inst_data(instance, 'vnics')

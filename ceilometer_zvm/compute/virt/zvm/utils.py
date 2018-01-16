@@ -32,9 +32,26 @@ def get_inst_power_state(instance):
 
 class zVMConnectorRequestHandler(object):
 
-    def __init__(self, connector_url):
-        _url = urlparse.urlparse(connector_url)
-        self._conn = connector.ZVMConnector(_url.hostname, _url.port)
+    def __init__(self, conf):
+        _url = urlparse.urlparse(conf.zvm_cloud_connector_url)
+        _ca_file = conf.zvm_cloud_connector_ca_file
+        _token_file = conf.zvm_cloud_connector_token_file
+        kwargs = {}
+        if _url.scheme == 'https':
+            kwargs['ssl_enabled'] = True
+        else:
+            kwargs['ssl_enabled'] = False
+
+        if _token_file is not None:
+            kwargs['token_path'] = _token_file
+
+        if (kwargs['ssl_enabled'] and
+            (_ca_file is not None)):
+            kwargs['verify'] = _ca_file
+        else:
+            kwargs['verify'] = False
+
+        self._conn = connector.ZVMConnector(_url.hostname, _url.port, **kwargs)
 
     def call(self, func_name, *args, **kwargs):
         results = self._conn.send_request(func_name, *args, **kwargs)
